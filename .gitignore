@@ -1,0 +1,4 @@
+data/
+!data/logstash/pipeline/
+!data/logstash/settings/
+!sata/prometheus/prometheus.yml

@@ -1,0 +1,95 @@
+version: "3.9"
+services:
+  graphite-statsd:
+    image: graphiteapp/graphite-statsd
+    container_name: gp01
+    ports:
+      - 80:80
+      - 2003-2004:2003-2004
+      - 2023-2024:2023-2024
+      - 8125:8125/udp
+      - 8126:8126
+    volumes:
+     - ./data/graphite/configs:/opt/graphite/conf
+     - ./data/graphite/data:/opt/graphite/storage
+     - ./data/statsd/config:/opt/statsd/config
+    networks:
+      - observability
+
+  grafana:
+    image: grafana/grafana
+    container_name: gf01
+    ports:
+      - 3000:3000
+    volumes:
+      - ./data/grafana:/var/lib/grafana
+    networks:
+      - observability
+
+  prometheus:
+    image: prom/prometheus
+    container_name: pr01
+    ports:
+      - 9090:9090
+    volumes:
+      - ./data/prometheus/data:/prometheus
+      - ./data/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+    networks:
+      - observability
+
+  pushgateway:
+    image: prom/pushgateway
+    container_name: pu01
+    ports:
+      - 9091:9091
+    networks:
+      - observability
+
+  es01:
+    image: docker.elastic.co/elasticsearch/elasticsearch:7.10.2
+    container_name: es01
+    environment:
+      - node.name=es01
+      - discovery.type=single-node
+      - bootstrap.memory_lock=true
+      - "ES_JAVA_OPTS=-Xms2g -Xmx2g"
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+      nofile:
+        soft: 65536
+        hard: 65536
+    volumes:
+      - ./data/elasticsearch/data:/usr/share/elasticsearch/data
+    ports:
+      - 9200:9200
+    networks:
+      - observability
+
+  kib01:
+    image: docker.elastic.co/kibana/kibana:7.10.2
+    container_name: kib01
+    ports:
+      - 5601:5601
+    environment:
+      ELASTICSEARCH_URL: http://es01:9200
+      ELASTICSEARCH_HOSTS: http://es01:9200
+    networks:
+      - observability
+
+  log01:
+    image: docker.elastic.co/logstash/logstash:7.10.2
+    container_name: log01
+    ports:
+      - 5228-5238:5228-5238
+      - 9600:9600
+    volumes:
+      - ./data/logstash/pipeline/:/usr/share/logstash/pipeline/
+      - ./data/logstash/settings/logstash.yml:/usr/share/logstash/config/logstash.yml
+    networks:
+      - observability
+
+networks:
+  observability:
+    driver: bridge
